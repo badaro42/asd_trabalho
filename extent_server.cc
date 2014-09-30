@@ -38,7 +38,7 @@ int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &r)
 	ext_c->data = buf;
 	ext_c->extent_attr.size = buf.size();
 
-	storage_mutex[id] = ext_c;
+	ext_storage[id] = ext_c;
 
 	return extent_protocol::OK;
 }
@@ -58,7 +58,7 @@ int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
 		//gravamos a estrutura actualizada no mapa de estruturas
 		buf = ext_c->data;
 		ext_c->extent_attr.atime = time(NULL);
-		storage_mutex[id] = ext_c;
+		ext_storage[id] = ext_c;
 
 		return extent_protocol::OK;
 	}
@@ -73,6 +73,8 @@ int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr
 	// You replace this with a real implementation. We send a phony response
 	// for now because it's difficult to get FUSE to do anything (including
 	// unmount) if getattr fails.
+
+	//TODO necessário usar scoped lock também aqui????
 
 	extent_cell *ext_c;
 
