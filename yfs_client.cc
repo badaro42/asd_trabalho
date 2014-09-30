@@ -91,7 +91,7 @@ yfs_client::getdir(inum inum, dirinfo &din)
 int
 yfs_client::put(inum inum, std::string buf) {
 	extent_protocol::status r;
-	printf("setattr %016llx\n", inum);
+	printf("put %016llx\n", inum);
 	r = ec->put(inum, buf);
 
 	if (r != extent_protocol::OK)
@@ -101,13 +101,41 @@ yfs_client::put(inum inum, std::string buf) {
 		return OK;
 }
 
-//
+int
+yfs_client::get(inum inum, std::string& buf) {
+	extent_protocol::status r;
+	printf("get %016llx\n", inum);
+	r = ec->get(inum, buf);
+
+	if (r != extent_protocol::OK)
+		return IOERR;
+
+	else
+		return OK;
+}
+
+int
+yfs_client::remove(inum inum) {
+	extent_protocol::status r;
+	printf("remove %016llx\n", inum);
+	r = ec->remove(inum);
+
+	if (r != extent_protocol::OK)
+		return IOERR;
+
+	else
+		return OK;
+}
+
+//se o inum passado como parametro for um ficheiro, retorna logo zero
 yfs_client::inum
 yfs_client::ilookup(inum di, std::string name)
 {
-	if(isfile(dir))
+	if(isfile(di))
 		return 0;
 
+	std::string buffer;
+	get(di, buffer);
 
 }
 

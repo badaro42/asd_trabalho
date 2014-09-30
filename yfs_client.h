@@ -46,7 +46,8 @@ public:
 	int getdir(inum, dirinfo &);
 
 	int put(inum, std::string buf);
-	//	int createfile(inum, const char *, inum &);
+	int get(inum, std::string &buf);
+	int remove(inum);
 	//	int createdir(inum, const char *, inum &);
 	//	int createroot(inum, const char *);
 	//	int lookup(inum, const char *, inum &);
