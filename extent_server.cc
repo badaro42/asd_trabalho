@@ -12,9 +12,7 @@ extent_server::extent_server() {
 	pthread_mutex_init(&storage_mutex, NULL);
 	std::string buf;
 	int r;
-	printf("antes de criar a root\n");
 	put(0x1, buf, r);
-	printf("depois de criar a root\n");
 }
 
 extent_server::~extent_server() {
@@ -26,7 +24,7 @@ int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &r)
 {
 	r = extent_protocol::OK;
 
-	ScopedLock sl (&storage_mutex); //falta inicializar
+	ScopedLock sl (&storage_mutex);
 	extent_cell *ext_c;
 
 	//procurar na BD se o extent já existe
@@ -52,7 +50,7 @@ int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &r)
 //se não existir, retorna um erro
 int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
 {
-	ScopedLock sl (&storage_mutex); //falta inicializar
+	ScopedLock sl (&storage_mutex);
 	extent_cell *ext_c;
 
 	//procurar na BD se o extent existe
@@ -79,8 +77,7 @@ int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr
 	// for now because it's difficult to get FUSE to do anything (including
 	// unmount) if getattr fails.
 
-	//TODO necessário usar scoped lock também aqui????
-
+	ScopedLock sl (&storage_mutex);
 	extent_cell *ext_c;
 
 	//procurar na BD se o extent existe
@@ -92,7 +89,7 @@ int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr
 		a.mtime = ext_c->extent_attr.mtime;
 		a.ctime = ext_c->extent_attr.ctime;
 	}
-	else { //TODO tratar este caso??
+	else {
 		a.size = 0;
 		a.atime = 0;
 		a.mtime = 0;
@@ -105,15 +102,14 @@ int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr
 //se a chave dada nao existir o metodo nao faz nada
 int extent_server::remove(extent_protocol::extentid_t id, int &)
 {
-	ScopedLock sl (&storage_mutex); //falta inicializar
+	ScopedLock sl (&storage_mutex);
 
-	//TODO apagar o extent da base de dados, bem como a estrutura que lhe está associada
+	//apagar o extent da base de dados, bem como a estrutura que lhe está associada
 	//usamos o delete() para remover a memoria previamente alocada para a struct,
 	//so depois removemos a entrada do mapa de extents
 	delete(ext_storage[id]);
 	ext_storage.erase(id);
 
-	//return extent_protocol::IOERR;
 	return extent_protocol::OK;
 }
 

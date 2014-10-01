@@ -132,7 +132,7 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
 #endif
 }
 
-//funciona
+//FUNCIONA!!
 //não trata o caso de gerar inums que ja possam existir.
 //implementar a geraçao de novo inum sempre que isso se verifique
 yfs_client::status
@@ -172,7 +172,7 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
 	e->attr_timeout = 0.0;
 	e->entry_timeout = 0.0;
 
-	// You fill this in - ACHO QUE JA TA BOM, FALTA TESTAR
+	// You fill this in - ACHO QUE JA TA BOM, FALTA TESTAR - TESTADO
 
 	return yfs_client::OK;
 }
@@ -200,7 +200,7 @@ void fuseserver_mknod( fuse_req_t req, fuse_ino_t parent,
 	}
 }
 
-//funciona
+//FUNCIONA
 void
 fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
@@ -262,6 +262,7 @@ int reply_buf_limited(fuse_req_t req, const char *buf, size_t bufsize,
 		return fuse_reply_buf(req, NULL, 0);
 }
 
+//FUNCIONA!!
 void
 fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 		off_t off, struct fuse_file_info *fi)
@@ -282,25 +283,25 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 	//TODO verificar esta parte do algoritmo
 	//fill in the b data structure using dirbuf_add
 	std::string parent_buffer;
-	if(yfs->get(ino, parent_buffer) == yfs_client::IOERR) {
+	if(yfs->get(inum, parent_buffer) == yfs_client::IOERR) {
 		fuse_reply_err(req, ENOENT);
 	}
 	else {
-		std::vector<std::string> dir_entries = yfs_client::split(parent_buffer, "\n", true, false);
+		std::vector<std::string> dir_entries = yfs_client::split(parent_buffer, "\n");
 
 		unsigned int i; //para nao dar warning aquando da comparação com o size do vector (que é unsigned)
 		for(i = 0; i < dir_entries.size(); i++) {
 			std::string entry = dir_entries[i];
-			std::vector<std::string> info = yfs_client::split(entry," ", true,false);
+			std::vector<std::string> info = yfs_client::split(entry, " ");
 
-			//da erro caso a info esteja incompleta
+			//deve dar erro caso a info esteja incompleta
 			if(info.size() != 2){
 				fuse_reply_err(req,ENOENT);
 			}
 
-			yfs_client::inum n_inum = yfs_client::n2i(info[0]);
+			inum = yfs_client::n2i(info[0]);
 			std::string n_name = info[1];
-			dirbuf_add(&b,n_name.c_str(),n_inum);
+			dirbuf_add(&b,n_name.c_str(),inum);
 		}
 
 		reply_buf_limited(req, b.p, b.size, off, size);

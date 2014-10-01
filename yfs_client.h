@@ -50,17 +50,10 @@ public:
 	int put(inum, std::string buf);
 	int get(inum, std::string &buf);
 	int remove(inum);
-	//int setattr(inum, fileinfo &);
 
 	typedef std::string::size_type (std::string::*find_t)(const std::string& delim, std::string::size_type offset) const;
-	static std::vector<std::string> split(const std::string& s, const std::string& match, bool removeEmpty,bool fullMatch);
+	static std::vector<std::string> split(const std::string& s, const std::string& match);
 
-	//	int createdir(inum, const char *, inum &);
-	//	int createroot(inum, const char *);
-	//	int lookup(inum, const char *, inum &);
-	//	int readdir(inum, std::vector<dirent> &);
-	//	int read(inum, off_t off, size_t size, std::string &);
-	//	int write(inum, const char *, off_t off, size_t size);
 };
 
 #endif 
