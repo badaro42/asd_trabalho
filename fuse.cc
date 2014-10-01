@@ -164,13 +164,13 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
 	if(yfs->put(parent, ss.str()) == yfs_client::IOERR)
 		return yfs_client::IOERR;
 
-//	struct stat new_st;
-//	getattr(new_inum,new_st);
-//	e->ino = new_inum;
-//	e->generation = 42;
-//	e->attr = new_st;
-//	e->attr_timeout = 0.0;
-//	e->entry_timeout = 0.0;
+	struct stat new_st;
+	getattr(new_inum,new_st);
+	e->ino = new_inum;
+	e->generation = 42;
+	e->attr = new_st;
+	e->attr_timeout = 0.0;
+	e->entry_timeout = 0.0;
 
 	// You fill this in - ACHO QUE JA TA BOM, FALTA TESTAR
 
