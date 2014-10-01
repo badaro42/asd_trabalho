@@ -169,9 +169,6 @@ yfs_client::ilookup(inum di, std::string name)
 		}
 	}
 	return 0;
-
-	//TODO completar esta merda
-
 }
 
 //TODO alterar isto depois quando tudo estiver feito
@@ -211,10 +208,10 @@ std::vector<std::string> yfs_client::split(const std::string& s, const std::stri
 //	else { //aqui partimos a string por espaços
 //
 //		printf("espaços espaços\n");
-//		printf("%s\n", s.c_str());
+//		printf("%s\n\n", s.c_str());
 //
 //		unsigned int pos = s.find(match);
-//		unsigned int initialPos = 0;
+//		std::string::size_type initialPos = 0;
 //
 //		while(pos != std::string::npos) {
 //			result.push_back(s.substr(initialPos, pos - initialPos + 1));
@@ -228,5 +225,4 @@ std::vector<std::string> yfs_client::split(const std::string& s, const std::stri
 //
 //	return result;
 //}
-
 

@@ -139,7 +139,7 @@ yfs_client::status
 fuseserver_createhelper(fuse_ino_t parent, const char *name,
 		mode_t mode, struct fuse_entry_param *e)
 {
-	printf("aqui aqui aqui\n");
+	//printf("aqui aqui aqui\n");
 
 	fuse_ino_t new_inum = rand() | 0x80000000;
 	std::string buff;
@@ -225,6 +225,7 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 	if (found) {
 		struct stat new_st;
 		getattr(parent_inum, new_st);
+
 		e.ino = parent_inum;
 		e.attr = new_st;
 
