@@ -10,6 +10,11 @@
 
 extent_server::extent_server() {
 	pthread_mutex_init(&storage_mutex, NULL);
+	std::string buf;
+	int r;
+	printf("antes de criar a root\n");
+	put(0x1, buf, r);
+	printf("depois de criar a root\n");
 }
 
 extent_server::~extent_server() {
@@ -62,7 +67,7 @@ int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
 
 		return extent_protocol::OK;
 	}
-	else //ainda nao existe, criamos um novo objecto
+	else //o extent nao existe, retorna erro
 		return extent_protocol::NOENT;
 
 }

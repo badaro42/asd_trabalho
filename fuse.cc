@@ -81,10 +81,20 @@ fuseserver_getattr(fuse_req_t req, fuse_ino_t ino,
 void
 fuseserver_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set, struct fuse_file_info *fi)
 {
+	//	yfs_client::inum temp_inum = ino;
+	//	yfs_client::fileinfo finfo;
+	//	yfs_client::status c_ret;
+
 	printf("fuseserver_setattr 0x%x\n", to_set);
+	//if ((yfs->isfile(temp_inum)) && (FUSE_SET_ATTR_SIZE & to_set)) {
 	if (FUSE_SET_ATTR_SIZE & to_set) {
 		printf("   fuseserver_setattr set size to %zu\n", attr->st_size);
-		struct stat st;
+		//struct stat st;
+
+		//finfo.size = attr->st_size;
+		//c_ret = yfs->setattr(temp_inum, ));
+
+
 		// You fill this in
 #if 0
 		fuse_reply_attr(req, &st, 0);
@@ -95,6 +105,7 @@ fuseserver_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set
 		fuse_reply_err(req, ENOSYS);
 	}
 }
+
 
 void
 fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
@@ -121,13 +132,51 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
 #endif
 }
 
+//funciona
+//não trata o caso de gerar inums que ja possam existir.
+//implementar a geraçao de novo inum sempre que isso se verifique
 yfs_client::status
 fuseserver_createhelper(fuse_ino_t parent, const char *name,
 		mode_t mode, struct fuse_entry_param *e)
 {
-	// You fill this in
-	return yfs_client::NOENT;
+	printf("aqui aqui aqui\n");
+
+	fuse_ino_t new_inum = rand() | 0x80000000;
+	std::string buff;
+	std::stringstream ss;
+	std::string parent_content;
+
+	//cria um novo ficheiro, com o conteudo vazio.
+	//no nosso caso, nao retorna nenhum erro, pois, no caso de o ficheiro ja existir,
+	//substitui o conteudo do ficheiro
+	if(yfs->put(new_inum, buff) == yfs_client::IOERR)
+		return yfs_client::IOERR;
+
+	//vai buscar os conteudos do pai, para colocar no novo ficheiro
+	if(yfs->get(parent, parent_content) == yfs_client::IOERR)
+		return yfs_client::IOERR;
+
+	ss << parent_content;
+	ss << new_inum << " " << name << "\n";
+
+	//actualiza a informacao do pai do novo ficheiro, que agr tem a info
+	//do ficheiro que acabamos de criar
+	if(yfs->put(parent, ss.str()) == yfs_client::IOERR)
+		return yfs_client::IOERR;
+
+//	struct stat new_st;
+//	getattr(new_inum,new_st);
+//	e->ino = new_inum;
+//	e->generation = 42;
+//	e->attr = new_st;
+//	e->attr_timeout = 0.0;
+//	e->entry_timeout = 0.0;
+
+	// You fill this in - ACHO QUE JA TA BOM, FALTA TESTAR
+
+	return yfs_client::OK;
 }
+
 
 void
 fuseserver_create(fuse_req_t req, fuse_ino_t parent, const char *name,
@@ -141,7 +190,7 @@ fuseserver_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 	}
 }
 
-void fuseserver_mknod( fuse_req_t req, fuse_ino_t parent, 
+void fuseserver_mknod( fuse_req_t req, fuse_ino_t parent,
 		const char *name, mode_t mode, dev_t rdev ) {
 	struct fuse_entry_param e;
 	if( fuseserver_createhelper( parent, name, mode, &e ) == yfs_client::OK ) {
@@ -151,6 +200,7 @@ void fuseserver_mknod( fuse_req_t req, fuse_ino_t parent,
 	}
 }
 
+//funciona
 void
 fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
@@ -165,8 +215,21 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 	// `parent' in YFS. If the file was found, initialize e.ino and
 	// e.attr appropriately.
 
-	if (found)
+	yfs_client::inum parent_inum = yfs->ilookup(parent, name);
+
+	//apenas tratamos o caso em que o found passa a true,
+	//pois ele é inicializado a false
+	if(parent_inum != 0)
+		found = true;
+
+	if (found) {
+		struct stat new_st;
+		getattr(parent_inum, new_st);
+		e.ino = parent_inum;
+		e.attr = new_st;
+
 		fuse_reply_entry(req, &e);
+	}
 	else
 		fuse_reply_err(req, ENOENT);
 }
@@ -216,12 +279,33 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 
 	memset(&b, 0, sizeof(b));
 
+	//TODO verificar esta parte do algoritmo
+	//fill in the b data structure using dirbuf_add
+	std::string parent_buffer;
+	if(yfs->get(ino, parent_buffer) == yfs_client::IOERR) {
+		fuse_reply_err(req, ENOENT);
+	}
+	else {
+		std::vector<std::string> dir_entries = yfs_client::split(parent_buffer, "\n", true, false);
 
-	// fill in the b data structure using dirbuf_add
+		unsigned int i; //para nao dar warning aquando da comparação com o size do vector (que é unsigned)
+		for(i = 0; i < dir_entries.size(); i++) {
+			std::string entry = dir_entries[i];
+			std::vector<std::string> info = yfs_client::split(entry," ", true,false);
 
+			//da erro caso a info esteja incompleta
+			if(info.size() != 2){
+				fuse_reply_err(req,ENOENT);
+			}
 
-	reply_buf_limited(req, b.p, b.size, off, size);
-	free(b.p);
+			yfs_client::inum n_inum = yfs_client::n2i(info[0]);
+			std::string n_name = info[1];
+			dirbuf_add(&b,n_name.c_str(),n_inum);
+		}
+
+		reply_buf_limited(req, b.p, b.size, off, size);
+		free(b.p);
+	}
 }
 
 

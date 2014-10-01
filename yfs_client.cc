@@ -127,6 +127,15 @@ yfs_client::remove(inum inum) {
 		return OK;
 }
 
+//int
+//yfs_client::setattr(inum inum, fileinfo &fin)
+//{
+//	//	int ret = OK;
+//	//	std::string buffer;
+//
+//	//if(ec->put(inum, buffer))
+//}
+
 //se o inum passado como parametro for um ficheiro, retorna logo zero
 yfs_client::inum
 yfs_client::ilookup(inum di, std::string name)
@@ -137,8 +146,49 @@ yfs_client::ilookup(inum di, std::string name)
 	std::string buffer;
 	get(di, buffer);
 
+	std::vector<std::string> entries = yfs_client::split(buffer,"\n",true,false);
+	for(unsigned int i = 0; i < entries.size(); i++){
+		std::string entry = entries[i];
+		std::vector<std::string> info = yfs_client::split(entry," ", true,false);
+		if(info.size() != 2)return 0;
+		inum temp_inum = n2i(info[0]);
+		std::string temp_name = info[1];
+		if(isfile(temp_inum)){
+			if(temp_name == name) return temp_inum;
+			else continue;
+		}
+	}
+	return 0;
+
+	//TODO completar esta merda
+
 }
 
+//TODO alterar isto depois quando tudo estiver feito
+std::vector<std::string> yfs_client::split(const std::string& s, const std::string& match,
+		bool removeEmpty,bool fullMatch){
+	std::vector<std::string> result;
+	std::string::size_type start = 0, skip = 1;
+	find_t pfind = &std::string::find_first_of;
 
+	if (fullMatch){
+		skip = match.length();
+		pfind = &std::string::find;
+	}
+
+	while (start != std::string::npos){
+		std::string::size_type end = (s.*pfind)(match, start);
+		if (skip == 0) end = std::string::npos;
+
+		std::string token = s.substr(start, end - start);
+
+		if (!(removeEmpty && token.empty())){
+			result.push_back(token);
+		}
+		if ((start = end) != std::string::npos) start += skip;
+	}
+
+	return result;
+}
 
 

@@ -33,10 +33,12 @@ public:
 
 private:
 	static std::string filename(inum);
-	static inum n2i(std::string);
+
 public:
 
 	yfs_client(std::string, std::string);
+
+	static inum n2i(std::string);
 
 	bool isfile(inum);
 	bool isdir(inum);
@@ -48,6 +50,11 @@ public:
 	int put(inum, std::string buf);
 	int get(inum, std::string &buf);
 	int remove(inum);
+	//int setattr(inum, fileinfo &);
+
+	typedef std::string::size_type (std::string::*find_t)(const std::string& delim, std::string::size_type offset) const;
+	static std::vector<std::string> split(const std::string& s, const std::string& match, bool removeEmpty,bool fullMatch);
+
 	//	int createdir(inum, const char *, inum &);
 	//	int createroot(inum, const char *);
 	//	int lookup(inum, const char *, inum &);
