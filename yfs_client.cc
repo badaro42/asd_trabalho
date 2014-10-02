@@ -127,6 +127,23 @@ yfs_client::remove(inum inum) {
 		return OK;
 }
 
+//dois metodos do stackoverflow
+std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
+    std::stringstream ss(s);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+        elems.push_back(item);
+    }
+    return elems;
+}
+
+
+std::vector<std::string> split(const std::string &s, char delim) {
+    std::vector<std::string> elems;
+    split(s, delim, elems);
+    return elems;
+}
+
 //int
 //yfs_client::setattr(inum inum, fileinfo &fin)
 //{
@@ -148,11 +165,11 @@ yfs_client::ilookup(inum di, std::string name)
 	get(di, buffer); //obtem o conteudo da directoria e escreve no buffer
 
 	//cada posiçao deste vector contém uma entrada com a info dum ficheiro
-	std::vector<std::string> entries = yfs_client::split(buffer,"\n");
+	std::vector<std::string> entries = split(buffer, '\n');
 	for(unsigned int i = 0; i < entries.size(); i++){
 
 		std::string entry = entries[i];
-		std::vector<std::string> info = yfs_client::split(entry, " ");
+		std::vector<std::string> info = split(entry, ' ');
 
 		//cada entrada tem que ter duas posiçoes: inum e nome
 		if(info.size() != 2)
@@ -171,27 +188,28 @@ yfs_client::ilookup(inum di, std::string name)
 	return 0;
 }
 
-//TODO alterar isto depois quando tudo estiver feito
-std::vector<std::string> yfs_client::split(const std::string& s, const std::string& match){
+//TODO METODO ANTIGO, REMOVER ANTES DA ENTREGA
+//std::vector<std::string> yfs_client::split(const std::string& s, const std::string& match){
+//
+//	std::vector<std::string> result;
+//	std::string::size_type start = 0; //size_type é mais apropriado para o tamanho da string que o int
+//	find_t pfind = &std::string::find_first_of;
+//
+//	while (start != std::string::npos){
+//		std::string::size_type end = (s.*pfind)(match, start);
+//		std::string token = s.substr(start, end - start);
+//
+//		if (!(token.empty())){
+//			result.push_back(token);
+//		}
+//		if ((start = end) != std::string::npos)
+//			start += 1;
+//	}
+//
+//	return result;
+//}
 
-	std::vector<std::string> result;
-	std::string::size_type start = 0; //size_type é mais apropriado para o tamanho da string que o int
-	find_t pfind = &std::string::find_first_of;
-
-	while (start != std::string::npos){
-		std::string::size_type end = (s.*pfind)(match, start);
-		std::string token = s.substr(start, end - start);
-
-		if (!(token.empty())){
-			result.push_back(token);
-		}
-		if ((start = end) != std::string::npos)
-			start += 1;
-	}
-
-	return result;
-}
-
+//TODO VERSAO ANTIGA DO SPLIT, REMOVER ANTES DA ENTREGA
 //std::vector<std::string> yfs_client::split(const std::string& s, const std::string& match){
 //
 //	std::vector<std::string> result;

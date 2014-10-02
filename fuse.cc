@@ -200,6 +200,24 @@ void fuseserver_mknod( fuse_req_t req, fuse_ino_t parent,
 	}
 }
 
+std::vector<std::string>
+&fuse_server_split(const std::string &s, char delim, std::vector<std::string> &elems) {
+    std::stringstream ss(s);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+        elems.push_back(item);
+    }
+    return elems;
+}
+
+
+std::vector<std::string>
+fuse_server_split(const std::string &s, char delim) {
+    std::vector<std::string> elems;
+    fuse_server_split(s, delim, elems);
+    return elems;
+}
+
 //FUNCIONA
 void
 fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
@@ -288,12 +306,12 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 		fuse_reply_err(req, ENOENT);
 	}
 	else {
-		std::vector<std::string> dir_entries = yfs_client::split(parent_buffer, "\n");
+		std::vector<std::string> dir_entries = fuse_server_split(parent_buffer, '\n');
 
 		unsigned int i; //para nao dar warning aquando da comparação com o size do vector (que é unsigned)
 		for(i = 0; i < dir_entries.size(); i++) {
 			std::string entry = dir_entries[i];
-			std::vector<std::string> info = yfs_client::split(entry, " ");
+			std::vector<std::string> info = fuse_server_split(entry, ' ');
 
 			//deve dar erro caso a info esteja incompleta
 			if(info.size() != 2){

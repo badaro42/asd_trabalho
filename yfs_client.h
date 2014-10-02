@@ -51,8 +51,11 @@ public:
 	int get(inum, std::string &buf);
 	int remove(inum);
 
-	typedef std::string::size_type (std::string::*find_t)(const std::string& delim, std::string::size_type offset) const;
-	static std::vector<std::string> split(const std::string& s, const std::string& match);
+//	std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems);
+//	std::vector<std::string> split(const std::string &s, char delim);
+
+//	typedef std::string::size_type (std::string::*find_t)(const std::string& delim, std::string::size_type offset) const;
+//	static std::vector<std::string> split(const std::string& s, const std::string& match);
 
 };
 
