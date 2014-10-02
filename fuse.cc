@@ -139,8 +139,6 @@ yfs_client::status
 fuseserver_createhelper(fuse_ino_t parent, const char *name,
 		mode_t mode, struct fuse_entry_param *e)
 {
-	//printf("aqui aqui aqui\n");
-
 	fuse_ino_t new_inum = rand() | 0x80000000;
 	std::string buff;
 	std::stringstream ss;
@@ -299,7 +297,6 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 
 	memset(&b, 0, sizeof(b));
 
-	//TODO verificar esta parte do algoritmo
 	//fill in the b data structure using dirbuf_add
 	std::string parent_buffer;
 	if(yfs->get(inum, parent_buffer) == yfs_client::IOERR) {

@@ -127,7 +127,7 @@ yfs_client::remove(inum inum) {
 		return OK;
 }
 
-//dois metodos do stackoverflow
+//metodo auxiliar que recebe o caracter onde queremos partir a string, parte a mesma e devolve-a num vector
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
     std::stringstream ss(s);
     std::string item;
@@ -137,7 +137,7 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
     return elems;
 }
 
-
+//metodo principal que trata de chamar o auxiliar para partir a string
 std::vector<std::string> split(const std::string &s, char delim) {
     std::vector<std::string> elems;
     split(s, delim, elems);
@@ -187,60 +187,3 @@ yfs_client::ilookup(inum di, std::string name)
 	}
 	return 0;
 }
-
-//TODO METODO ANTIGO, REMOVER ANTES DA ENTREGA
-//std::vector<std::string> yfs_client::split(const std::string& s, const std::string& match){
-//
-//	std::vector<std::string> result;
-//	std::string::size_type start = 0; //size_type é mais apropriado para o tamanho da string que o int
-//	find_t pfind = &std::string::find_first_of;
-//
-//	while (start != std::string::npos){
-//		std::string::size_type end = (s.*pfind)(match, start);
-//		std::string token = s.substr(start, end - start);
-//
-//		if (!(token.empty())){
-//			result.push_back(token);
-//		}
-//		if ((start = end) != std::string::npos)
-//			start += 1;
-//	}
-//
-//	return result;
-//}
-
-//TODO VERSAO ANTIGA DO SPLIT, REMOVER ANTES DA ENTREGA
-//std::vector<std::string> yfs_client::split(const std::string& s, const std::string& match){
-//
-//	std::vector<std::string> result;
-//	std::stringstream ss(s);
-//	std::string line;
-//
-//	//queremos partir a string de entrada por linha
-//	if(match.compare("\n")) {
-//		while (getline(ss, line)) {
-//			result.push_back(line);
-//			printf("***** %s *****\n", line.c_str());
-//		}
-//	}
-//	else { //aqui partimos a string por espaços
-//
-//		printf("espaços espaços\n");
-//		printf("%s\n\n", s.c_str());
-//
-//		unsigned int pos = s.find(match);
-//		std::string::size_type initialPos = 0;
-//
-//		while(pos != std::string::npos) {
-//			result.push_back(s.substr(initialPos, pos - initialPos + 1));
-//			initialPos = pos + 1;
-//
-//			pos = s.find(match, initialPos);
-//		}
-//
-//		result.push_back(s.substr(initialPos, std::min(pos, s.size()) - initialPos + 1));
-//	}
-//
-//	return result;
-//}
-
