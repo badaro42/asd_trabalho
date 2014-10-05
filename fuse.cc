@@ -25,6 +25,7 @@ int id() {
 	return myid;
 }
 
+//codigo dado, nao mexemos
 yfs_client::status
 getattr(yfs_client::inum inum, struct stat &st)
 {
@@ -61,7 +62,7 @@ getattr(yfs_client::inum inum, struct stat &st)
 	return yfs_client::OK;
 }
 
-
+//codigo dado, nao mexemos
 void
 fuseserver_getattr(fuse_req_t req, fuse_ino_t ino,
 		struct fuse_file_info *fi)
@@ -78,6 +79,7 @@ fuseserver_getattr(fuse_req_t req, fuse_ino_t ino,
 	fuse_reply_attr(req, &st, 0);
 }
 
+//3A FASE
 void
 fuseserver_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set, struct fuse_file_info *fi)
 {
@@ -106,19 +108,57 @@ fuseserver_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set
 	}
 }
 
-
+//3A FASE
+//off - a posiçao onde queremos começar a ler
+//size - o numero de bytes que queremos ler
 void
 fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
 		off_t off, struct fuse_file_info *fi)
 {
 	// You fill this in
-#if 0
-	fuse_reply_buf(req, buf, size);
-#else
-	fuse_reply_err(req, ENOSYS);
-#endif
+
+	yfs_client::inum local_inum = ino;
+	std::string buffer;
+
+	//da erro pois nao é possivel ler ficheiros inexistentes
+	if(yfs->get(local_inum, buffer) != yfs_client::OK)
+		fuse_reply_err(req, ENOENT);
+
+	//o ficheiro existe, temos que tratar agr da quantidade de informaçao que queremos
+	else {
+		//o offset ou o tamanho sao menores que zero: erro de I/O
+		if((off < 0) || (size < 0))
+			fuse_reply_err(req, EIO);
+
+		//segundo a o header do fuse, caso o offset seja maior que o tamanho do buffer
+		//actual do ficheiro, deve devolver zeros
+		else if(off >= buffer.size)
+			fuse_reply_buf(req, NULL, size);
+
+		//a quantidade de informaçao que queremos ler esta dentro dos limites do ficheiro
+		else if(off+size <= buffer.size) {
+			std::string to_reply = buffer.substr(off, size);
+			fuse_reply_buf(req, to_reply.c_str(), size);
+			//fuse_reply_buf(req, to_reply.c_str(), (int)to_reply.size); //TODO ou apenas size??
+		}
+
+		//offset dentro dos limites de ficheiro, mas a soma do offset com o size sai
+		//dos limites, ler apenas a parte dentro do ficheiro
+		else {
+			std::string to_reply = buffer.substr(off, buffer.size()-off);
+			fuse_reply_buf(req, to_reply.c_str(), buffer.size()-off);
+			//fuse_reply_buf(req, to_reply.c_str(), (int)to_reply.size); //TODO ou apenas size??
+		}
+	}
+
+	//#if 0
+	//	fuse_reply_buf(req, buf, size);
+	//#else
+	//	fuse_reply_err(req, ENOSYS);
+	//#endif
 }
 
+//3A FASE
 void
 fuseserver_write(fuse_req_t req, fuse_ino_t ino,
 		const char *buf, size_t size, off_t off,
@@ -132,7 +172,20 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
 #endif
 }
 
-//FUNCIONA!!
+//3A FASE
+void
+fuseserver_open(fuse_req_t req, fuse_ino_t ino,
+		struct fuse_file_info *fi)
+{
+	// You fill this in
+#if 1
+	fuse_reply_open(req, fi);
+#else
+	fuse_reply_err(req, ENOSYS);
+#endif
+}
+
+//FUNCIONA!! (feito na FASE 2)
 //não trata o caso de gerar inums que ja possam existir.
 //implementar a geraçao de novo inum sempre que isso se verifique
 yfs_client::status
@@ -175,7 +228,7 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
 	return yfs_client::OK;
 }
 
-
+//codigo dado, nao mexemos
 void
 fuseserver_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 		mode_t mode, struct fuse_file_info *fi)
@@ -188,6 +241,7 @@ fuseserver_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 	}
 }
 
+//codigo dado, nao mexemos
 void fuseserver_mknod( fuse_req_t req, fuse_ino_t parent,
 		const char *name, mode_t mode, dev_t rdev ) {
 	struct fuse_entry_param e;
@@ -198,25 +252,26 @@ void fuseserver_mknod( fuse_req_t req, fuse_ino_t parent,
 	}
 }
 
+//(feito na FASE 2)
 std::vector<std::string>
 &fuse_server_split(const std::string &s, char delim, std::vector<std::string> &elems) {
-    std::stringstream ss(s);
-    std::string item;
-    while (std::getline(ss, item, delim)) {
-        elems.push_back(item);
-    }
-    return elems;
+	std::stringstream ss(s);
+	std::string item;
+	while (std::getline(ss, item, delim)) {
+		elems.push_back(item);
+	}
+	return elems;
 }
 
-
+//(feito na FASE 2)
 std::vector<std::string>
 fuse_server_split(const std::string &s, char delim) {
-    std::vector<std::string> elems;
-    fuse_server_split(s, delim, elems);
-    return elems;
+	std::vector<std::string> elems;
+	fuse_server_split(s, delim, elems);
+	return elems;
 }
 
-//FUNCIONA
+//FUNCIONA (feito na FASE 2)
 void
 fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
@@ -323,19 +378,6 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 		reply_buf_limited(req, b.p, b.size, off, size);
 		free(b.p);
 	}
-}
-
-
-void
-fuseserver_open(fuse_req_t req, fuse_ino_t ino,
-		struct fuse_file_info *fi)
-{
-	// You fill this in
-#if 1
-	fuse_reply_open(req, fi);
-#else
-	fuse_reply_err(req, ENOSYS);
-#endif
 }
 
 void
