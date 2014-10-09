@@ -69,6 +69,7 @@
 #include <netinet/tcp.h>
 #include <time.h>
 #include <netdb.h>
+#include <unistd.h>
 
 #include "jsl_log.h"
 #include "gettime.h"
@@ -565,6 +566,23 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
 		char *b, int sz)
 {
 	ScopedLock rwl(&reply_window_m_);
+
+	//procurar cliente
+	client_ = reply_window_.find(clt_nonce);
+	std::list<reply_t> *reply_list = &client_->second;
+	std::list<reply_t>::iterator list_it;
+
+
+	//procurar mensagem com o xid da lista do cliente
+	for(list_it = (*reply_list).begin(); list_it != (*reply_list).end(); list_it++)
+	{
+		if(xid == (*list_it).xid)
+		{
+			(*list_it).cb_present = true;
+			(*list_it).buf = b;
+			(*list_it).sz = sz;
+		}
+	}
 }
 
 void
@@ -588,8 +606,33 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 		unsigned int xid_rep, char **b, int *sz)
 {
 	ScopedLock rwl(&reply_window_m_);
+	
+	std::list<reply_t>::iterator local_it;
+	rpcstate_t stat = NEW;	
 
-	return NEW;
+	if(xid <= xid_rep)
+    		return FORGOTTEN;
+    	
+	std::list<reply_t> *clt_reply_l = &reply_window_.find(clt_nonce)->second;
+	for (local_it = (*clt_reply_l).begin();local_it != (*clt_reply_l).end();local_it++) {
+		if (xid == (*local_it).xid) {
+			if ((*local_it).cb_present == true) {
+				stat = DONE;
+				*b = (*local_it).buf;
+				*sz = (*local_it).sz;
+			}
+			else
+				stat = INPROGRESS;
+		}
+	}
+	if (stat == NEW) {
+		reply_t *new_reply = new reply_t(xid);
+		(*clt_reply_l).push_back(*new_reply);
+		local_it = (*clt_reply_l).begin();
+		reply_window_[clt_nonce] = *clt_reply_l;
+	}
+
+	return stat;
 }
 
 //rpc handler

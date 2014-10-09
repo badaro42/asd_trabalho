@@ -13,84 +13,178 @@
 
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
-  ec = new extent_client(extent_dst);
+	ec = new extent_client(extent_dst);
 
 }
 
 yfs_client::inum
 yfs_client::n2i(std::string n)
 {
-  std::istringstream ist(n);
-  unsigned long long finum;
-  ist >> finum;
-  return finum;
+	std::istringstream ist(n);
+	yfs_client::inum finum;
+	ist >> finum;
+	return finum;
 }
 
 std::string
 yfs_client::filename(inum inum)
 {
-  std::ostringstream ost;
-  ost << inum;
-  return ost.str();
+	std::ostringstream ost;
+	ost << inum;
+	return ost.str();
 }
 
 bool
 yfs_client::isfile(inum inum)
 {
-  if(inum & 0x80000000)
-    return true;
-  return false;
+	if(inum & 0x80000000)
+		return true;
+	return false;
 }
 
 bool
 yfs_client::isdir(inum inum)
 {
-  return ! isfile(inum);
+	return ! isfile(inum);
 }
 
 int
 yfs_client::getfile(inum inum, fileinfo &fin)
 {
-  int r = OK;
+	int r = OK;
 
+	printf("getfile %016llx\n", inum);
+	extent_protocol::attr a;
+	if (ec->getattr(inum, a) != extent_protocol::OK) {
+		r = IOERR;
+		goto release;
+	}
 
-  printf("getfile %016llx\n", inum);
-  extent_protocol::attr a;
-  if (ec->getattr(inum, a) != extent_protocol::OK) {
-    r = IOERR;
-    goto release;
-  }
+	fin.atime = a.atime;
+	fin.mtime = a.mtime;
+	fin.ctime = a.ctime;
+	fin.size = a.size;
+	printf("getfile %016llx -> sz %llu\n", inum, fin.size);
 
-  fin.atime = a.atime;
-  fin.mtime = a.mtime;
-  fin.ctime = a.ctime;
-  fin.size = a.size;
-  printf("getfile %016llx -> sz %llu\n", inum, fin.size);
-
- release:
-
-  return r;
+	release:
+	return r;
 }
 
 int
 yfs_client::getdir(inum inum, dirinfo &din)
 {
-  int r = OK;
+	int r = OK;
 
+	printf("getdir %016llx\n", inum);
+	extent_protocol::attr a;
+	if (ec->getattr(inum, a) != extent_protocol::OK) {
+		r = IOERR;
+		goto release;
+	}
+	din.atime = a.atime;
+	din.mtime = a.mtime;
+	din.ctime = a.ctime;
 
-  printf("getdir %016llx\n", inum);
-  extent_protocol::attr a;
-  if (ec->getattr(inum, a) != extent_protocol::OK) {
-    r = IOERR;
-    goto release;
-  }
-  din.atime = a.atime;
-  din.mtime = a.mtime;
-  din.ctime = a.ctime;
-
- release:
-  return r;
+	release:
+	return r;
 }
 
+int
+yfs_client::put(inum inum, std::string buf) {
+	extent_protocol::status r;
+	printf("put %016llx\n", inum);
+	r = ec->put(inum, buf);
 
+	if (r != extent_protocol::OK)
+		return IOERR;
 
+	else
+		return OK;
+}
+
+int
+yfs_client::get(inum inum, std::string& buf) {
+	extent_protocol::status r;
+	printf("get %016llx\n", inum);
+	r = ec->get(inum, buf);
+
+	if (r != extent_protocol::OK)
+		return IOERR;
+
+	else
+		return OK;
+}
+
+int
+yfs_client::remove(inum inum) {
+	extent_protocol::status r;
+	printf("remove %016llx\n", inum);
+	r = ec->remove(inum);
+
+	if (r != extent_protocol::OK)
+		return IOERR;
+
+	else
+		return OK;
+}
+
+//metodo auxiliar que recebe o caracter onde queremos partir a string, parte a mesma e devolve-a num vector
+std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
+    std::stringstream ss(s);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+        elems.push_back(item);
+    }
+    return elems;
+}
+
+//metodo principal que trata de chamar o auxiliar para partir a string
+std::vector<std::string> split(const std::string &s, char delim) {
+    std::vector<std::string> elems;
+    split(s, delim, elems);
+    return elems;
+}
+
+//int
+//yfs_client::setattr(inum inum, fileinfo &fin)
+//{
+//	//	int ret = OK;
+//	//	std::string buffer;
+//
+//	//if(ec->put(inum, buffer))
+//}
+
+//se o inum passado como parametro for um ficheiro, retorna logo zero
+yfs_client::inum
+yfs_client::ilookup(inum di, std::string name)
+{
+	//verificamos se o inum do parametro é ou nao uma directoria
+	if(isfile(di))
+		return 0;
+
+	std::string buffer;
+	get(di, buffer); //obtem o conteudo da directoria e escreve no buffer
+
+	//cada posiçao deste vector contém uma entrada com a info dum ficheiro
+	std::vector<std::string> entries = split(buffer, '\n');
+	for(unsigned int i = 0; i < entries.size(); i++){
+
+		std::string entry = entries[i];
+		std::vector<std::string> info = split(entry, ' ');
+
+		//cada entrada tem que ter duas posiçoes: inum e nome
+		if(info.size() != 2)
+			return 0;
+
+		inum temp_inum = n2i(info[0]);
+		std::string temp_name = info[1];
+
+		//vamos ver se o ficheiro existe
+		if(isfile(temp_inum)){
+			if(temp_name == name) //se existir verificamos se o nome do ficheiro é igual ao do parametro
+				return temp_inum;
+			else continue;
+		}
+	}
+	return 0;
+}

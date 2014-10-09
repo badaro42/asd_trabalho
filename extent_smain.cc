@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include "extent_server.h"
 
+#include <unistd.h>
+
 // Main loop of extent server
 
 int
