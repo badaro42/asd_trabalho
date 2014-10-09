@@ -28,7 +28,7 @@ extent_client::get(extent_protocol::extentid_t eid, std::string &buf)
 }
 
 extent_protocol::status
-extent_client::getattr(extent_protocol::extentid_t eid, 
+extent_client::getattr(extent_protocol::extentid_t eid,
 		       extent_protocol::attr &attr)
 {
   extent_protocol::status ret = extent_protocol::OK;
@@ -53,5 +53,3 @@ extent_client::remove(extent_protocol::extentid_t eid)
   ret = cl->call(extent_protocol::remove, eid, r);
   return ret;
 }
-
-

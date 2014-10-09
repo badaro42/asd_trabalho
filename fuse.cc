@@ -21,7 +21,7 @@
 int myid;
 yfs_client *yfs;
 
-int id() { 
+int id() {
 	return myid;
 }
 
