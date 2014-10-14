@@ -138,43 +138,12 @@ fuseserver_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set
 		else {
 			fuse_reply_err(req, EIO);
 		}
-
-
-		//#if 0
-		//		fuse_reply_attr(req, &st, 0);
-		//#else
-		//		fuse_reply_err(req, ENOSYS);
-		//#endif
-	} else {
+	}
+	else {
 		fuse_reply_err(req, EIO);
 	}
 }
 
-
-
-
-
-//void
-//fuseserver_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set, struct fuse_file_info *fi)
-//{
-//	//	yfs_client::inum temp_inum = ino;
-//	//	yfs_client::fileinfo finfo;
-//	//	yfs_client::status c_ret;
-//
-//	printf("fuseserver_setattr 0x%x\n", to_set);
-//	//if ((yfs->isfile(temp_inum)) && (FUSE_SET_ATTR_SIZE & to_set)) {
-//	if (FUSE_SET_ATTR_SIZE & to_set) {
-//		printf("   fuseserver_setattr set size to %zu\n", attr->st_size);
-//		//struct stat st;
-//
-//		//finfo.size = attr->st_size;
-//		//c_ret = yfs->setattr(temp_inum, ));
-//
-//
-//		// You fill this in
-//
-//	}
-//}
 
 //3A FASE - feito, falta testar
 //off - a posiçao onde queremos começar a ler
@@ -218,12 +187,6 @@ fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
 			//fuse_reply_buf(req, to_reply.c_str(), (int)to_reply.size); //TODO ou apenas size??
 		}
 	}
-
-	//#if 0
-	//	fuse_reply_buf(req, buf, size);
-	//#else
-	//	fuse_reply_err(req, ENOSYS);
-	//#endif
 }
 
 //3A FASE - feito, falta testar
@@ -276,12 +239,6 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
 			fuse_reply_write(req, size);
 		}
 	}
-
-	//#if 0
-	//	fuse_reply_write(req, bytes_written);
-	//#else
-	//	fuse_reply_err(req, ENOSYS);
-	//#endif
 }
 
 //3A FASE - feito, falta testar
@@ -297,12 +254,6 @@ fuseserver_open(fuse_req_t req, fuse_ino_t ino,
 		fuse_reply_open(req, fi);
 	else
 		fuse_reply_err(req, EIO);
-
-	//#if 0
-	//	fuse_reply_open(req, fi);
-	//#else
-	//	fuse_reply_err(req, ENOSYS);
-	//#endif
 }
 
 //FUNCIONA!! (feito na FASE 2)
@@ -312,7 +263,6 @@ yfs_client::status
 fuseserver_createhelper(fuse_ino_t parent, const char *name,
 		mode_t mode, struct fuse_entry_param *e, bool isFile)
 {
-
 	fuse_ino_t new_inum;
 	//yfs->acquire(parent);
 	//yfs_client::inum inumber = yfs->ilookup(parent,name);
@@ -512,6 +462,7 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 	}
 }
 
+//FASE 4 - feito e testado
 void
 fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
 		mode_t mode)
@@ -524,7 +475,7 @@ fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
 		fuse_reply_err(req, ENOENT);
 }
 
-//FASE 4 - feito, falta testar
+//FASE 4 - feito, testado
 void
 fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
