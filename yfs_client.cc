@@ -180,11 +180,9 @@ yfs_client::ilookup(inum di, std::string name)
 		std::string temp_name = info[1];
 
 		//vamos ver se o ficheiro existe
-		if(isfile(temp_inum)){
 			if(temp_name == name) //se existir verificamos se o nome do ficheiro é igual ao do parametro
 				return temp_inum;
 			else continue;
-		}
 	}
 	return 0;
 }
