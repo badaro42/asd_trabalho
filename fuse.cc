@@ -522,6 +522,7 @@ fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
 #endif
 }
 
+//FASE 4 - feito, falta testar
 void
 fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
