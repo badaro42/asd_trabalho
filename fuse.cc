@@ -260,13 +260,21 @@ fuseserver_open(fuse_req_t req, fuse_ino_t ino,
 //implementar a geraçao de novo inum sempre que isso se verifique
 yfs_client::status
 fuseserver_createhelper(fuse_ino_t parent, const char *name,
-		mode_t mode, struct fuse_entry_param *e)
+		mode_t mode, struct fuse_entry_param *e, bool isFile)
 {
+
+	fuse_ino_t new_inum;
+	//yfs->acquire(parent);
+	//yfs_client::inum inumber = yfs->ilookup(parent,name);
+
+	if(isFile)
+		new_inum = rand() | 0x80000000;
+	else
+		new_inum = rand();
+
 	//TODO usar este metodo para criar directorias/ficheiros
 	//acrescentar um parametro para ver se queremos criar uma directoria ou ficheiro,
 	//para assim gerar o inum correctamente - bool isfile
-
-	fuse_ino_t new_inum = rand() | 0x80000000;
 	std::string buff;
 	std::stringstream ss;
 	std::string parent_content;
@@ -308,7 +316,7 @@ fuseserver_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 		mode_t mode, struct fuse_file_info *fi)
 {
 	struct fuse_entry_param e;
-	if( fuseserver_createhelper( parent, name, mode, &e ) == yfs_client::OK ) {
+	if( fuseserver_createhelper( parent, name, mode, &e, true ) == yfs_client::OK ) {
 		fuse_reply_create(req, &e, fi);
 	} else {
 		fuse_reply_err(req, ENOENT);
@@ -319,7 +327,7 @@ fuseserver_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 void fuseserver_mknod( fuse_req_t req, fuse_ino_t parent,
 		const char *name, mode_t mode, dev_t rdev ) {
 	struct fuse_entry_param e;
-	if( fuseserver_createhelper( parent, name, mode, &e ) == yfs_client::OK ) {
+	if( fuseserver_createhelper( parent, name, mode, &e, true ) == yfs_client::OK ) {
 		fuse_reply_entry(req, &e);
 	} else {
 		fuse_reply_err(req, ENOENT);
@@ -460,15 +468,10 @@ fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
 {
 	struct fuse_entry_param e;
 
-	//TODO - alterar o create_helper para receber um booleano ISFILE para indicar
-	//que estamos a criar uma directoria: necessário alterar fuse_low_level.h???
-
-	// You fill this in
-#if 0
-	fuse_reply_entry(req, &e);
-#else
-	fuse_reply_err(req, ENOSYS);
-#endif
+	if( fuseserver_createhelper( parent, name, mode, &e, false) == yfs_client::OK )
+		fuse_reply_entry(req, &e);
+	else
+		fuse_reply_err(req, ENOENT);
 }
 
 //FASE 4 - feito, falta testar
@@ -500,11 +503,11 @@ fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 	else {
 		yfs_client::inum inum_in_directory;
 		std::vector<std::string> file_info;
-		std::vector<std::string> entries = split(parent_buffer ,'\n');
+		std::vector<std::string> entries = fuse_server_split(parent_buffer ,'\n');
 
 		for(i = 0; i < entries.size(); i++) {
 
-			file_info = split(entries[i] , ' ');
+			file_info = fuse_server_split(entries[i] , ' ');
 			if(file_info.size() != 2)
 				fuse_reply_err(req, EIO);
 
