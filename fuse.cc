@@ -312,6 +312,11 @@ yfs_client::status
 fuseserver_createhelper(fuse_ino_t parent, const char *name,
 		mode_t mode, struct fuse_entry_param *e)
 {
+
+	//TODO usar este metodo para criar directorias/ficheiros
+	//acrescentar um parametro para ver se queremos criar uma directoria ou ficheiro,
+	//para assim gerar o inum correctamente - bool isfile
+
 	fuse_ino_t new_inum = rand() | 0x80000000;
 	std::string buff;
 	std::stringstream ss;
@@ -506,6 +511,9 @@ fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
 {
 	struct fuse_entry_param e;
 
+	//TODO - alterar o create_helper para receber um booleano ISFILE para indicar
+	//que estamos a criar uma directoria: necessário alterar fuse_low_level.h???
+
 	// You fill this in
 #if 0
 	fuse_reply_entry(req, &e);
@@ -517,11 +525,52 @@ fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
 void
 fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
-
 	// You fill this in
-	// Success:	fuse_reply_err(req, 0);
-	// Not found:	fuse_reply_err(req, ENOENT);
-	fuse_reply_err(req, ENOSYS);
+	std::string parent_buffer;
+	std::stringstream ss;
+	int i;
+
+	//verificamos se a directoria pai existe
+	if(yfs->get(parent, parent_buffer) != yfs_client::OK)
+		fuse_reply_err(req, EIO);
+
+	//obtemos o inum do ficheiro que queremos remover
+	yfs_client::inum file_inum = yfs->ilookup(parent, name);
+
+	//caso o inum seja 0 significa que o ficheiro nao existe
+	if(file_inum == 0)
+		fuse_reply_err(req, ENOENT);
+
+	int remove_status = yfs->remove(file_inum);
+	if(remove_status != yfs_client::OK)
+		fuse_reply_err(req, EIO);
+
+	//ja temos o conteudo da directoria (obtido na primeira verificaçao)
+	//iteramos sobre todos os nomes da directoria
+	else {
+		yfs_client::inum inum_in_directory;
+		std::vector<std::string> file_info;
+		std::vector<std::string> entries = split(parent_buffer ,'\n');
+
+		for(i = 0; i < entries.size(); i++) {
+
+			file_info = split(entries[i] , ' ');
+			if(file_info.size() != 2)
+				fuse_reply_err(req, EIO);
+
+			inum_in_directory = yfs_client::n2i(file_info[1]);
+			if(file_inum != inum_in_directory) {
+				ss << entries[i] << '\n';
+			}
+		}
+
+		//actualizamos a nova informação na directoria pai
+		std::string new_parent_buffer = ss.str();
+		if(yfs->put(parent, new_parent_buffer) != yfs_client::OK)
+			fuse_reply_err(req, EIO);
+		else
+			fuse_reply_err(req, 0);
+	}
 }
 
 void
