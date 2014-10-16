@@ -1,6 +1,7 @@
 // yfs client.  implements FS operations using extent and lock server
 #include "yfs_client.h"
 #include "extent_client.h"
+#include "lock_client.h"
 #include <sstream>
 #include <iostream>
 #include <stdio.h>
@@ -13,7 +14,7 @@
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
 	ec = new extent_client(extent_dst);
-
+	lc = new lock_client(lock_dst);
 }
 
 yfs_client::inum
@@ -51,8 +52,12 @@ int
 yfs_client::getfile(inum inum, fileinfo &fin)
 {
 	int r = OK;
-
 	printf("getfile %016llx\n", inum);
+
+	//printf("GETFILE - AINDA NAO TENHO LOCK!\n");
+	//acquire_lock(inum);
+	//printf("GETFILE - JÁ TENHO LOCK!\n");
+
 	extent_protocol::attr a;
 	if (ec->getattr(inum, a) != extent_protocol::OK) {
 		r = IOERR;
@@ -66,6 +71,7 @@ yfs_client::getfile(inum inum, fileinfo &fin)
 	printf("getfile %016llx -> sz %llu\n", inum, fin.size);
 
 	release:
+	//release_lock(inum);
 	return r;
 }
 
@@ -73,8 +79,12 @@ int
 yfs_client::getdir(inum inum, dirinfo &din)
 {
 	int r = OK;
-
 	printf("getdir %016llx\n", inum);
+
+	//printf("GETDIR - AINDA NAO TENHO LOCK!\n");
+	//acquire_lock(inum);
+	//printf("GETDIR - JÁ TENHO LOCK!\n");
+
 	extent_protocol::attr a;
 	if (ec->getattr(inum, a) != extent_protocol::OK) {
 		r = IOERR;
@@ -85,13 +95,16 @@ yfs_client::getdir(inum inum, dirinfo &din)
 	din.ctime = a.ctime;
 
 	release:
+	//release_lock(inum);
 	return r;
 }
 
+//SEM LOCKS
 int
 yfs_client::put(inum inum, std::string buf) {
 	extent_protocol::status r;
 	printf("put %016llx\n", inum);
+
 	r = ec->put(inum, buf);
 
 	if (r != extent_protocol::OK)
@@ -105,6 +118,7 @@ int
 yfs_client::get(inum inum, std::string& buf) {
 	extent_protocol::status r;
 	printf("get %016llx\n", inum);
+
 	r = ec->get(inum, buf);
 
 	if (r != extent_protocol::OK)
@@ -118,6 +132,7 @@ int
 yfs_client::remove(inum inum) {
 	extent_protocol::status r;
 	printf("remove %016llx\n", inum);
+
 	r = ec->remove(inum);
 
 	if (r != extent_protocol::OK)
@@ -129,29 +144,21 @@ yfs_client::remove(inum inum) {
 
 //metodo auxiliar que recebe o caracter onde queremos partir a string, parte a mesma e devolve-a num vector
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
-    std::stringstream ss(s);
-    std::string item;
-    while (std::getline(ss, item, delim)) {
-        elems.push_back(item);
-    }
-    return elems;
+	std::stringstream ss(s);
+	std::string item;
+	while (std::getline(ss, item, delim)) {
+		elems.push_back(item);
+	}
+	return elems;
 }
 
 //metodo principal que trata de chamar o auxiliar para partir a string
 std::vector<std::string> split(const std::string &s, char delim) {
-    std::vector<std::string> elems;
-    split(s, delim, elems);
-    return elems;
+	std::vector<std::string> elems;
+	split(s, delim, elems);
+	return elems;
 }
 
-//int
-//yfs_client::setattr(inum inum, fileinfo &fin)
-//{
-//	//	int ret = OK;
-//	//	std::string buffer;
-//
-//	//if(ec->put(inum, buffer))
-//}
 
 //se o inum passado como parametro for um ficheiro, retorna logo zero
 yfs_client::inum
@@ -179,11 +186,25 @@ yfs_client::ilookup(inum di, std::string name)
 		std::string temp_name = info[1];
 
 		//vamos ver se o ficheiro existe
-		if(isfile(temp_inum)){
-			if(temp_name == name) //se existir verificamos se o nome do ficheiro é igual ao do parametro
-				return temp_inum;
-			else continue;
-		}
+		if(temp_name == name) //se existir verificamos se o nome do ficheiro é igual ao do parametro
+			return temp_inum;
+		else continue;
 	}
 	return 0;
+}
+
+//liberta o lock do extent ext_id
+void
+yfs_client::release_lock(inum ext_id)
+{
+	printf("RELEASE_LOCK - estou a libertar o lock do extent %016llx\n", ext_id);
+	lc->release(ext_id);
+}
+
+//adquire o lock do extent ext_id
+void
+yfs_client::acquire_lock(inum ext_id)
+{
+	printf("ACQUIRE_LOCK - estou a pedir o lock do extent %016llx\n", ext_id);
+	lc->acquire(ext_id);
 }
