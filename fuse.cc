@@ -63,6 +63,7 @@ getattr(yfs_client::inum inum, struct stat &st)
 }
 
 //codigo dado, nao mexemos
+//FASE 4 - adicionámos locks
 void
 fuseserver_getattr(fuse_req_t req, fuse_ino_t ino,
 		struct fuse_file_info *fi)
@@ -71,15 +72,20 @@ fuseserver_getattr(fuse_req_t req, fuse_ino_t ino,
 	yfs_client::inum inum = ino; // req->in.h.nodeid;
 	yfs_client::status ret;
 
+	yfs->acquire_lock(inum);
+
 	ret = getattr(inum, st);
 	if(ret != yfs_client::OK){
+		yfs->release_lock(inum);
 		fuse_reply_err(req, ENOENT);
 		return;
 	}
+	yfs->release_lock(inum);
 	fuse_reply_attr(req, &st, 0);
 }
 
 //3A FASE
+//FASE 4 - adicionámos locks
 void
 fuseserver_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set, struct fuse_file_info *fi)
 {
@@ -94,25 +100,28 @@ fuseserver_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set
 		std::string file_data;
 		struct stat st;
 
+		yfs->acquire_lock(local_inum);
+
 		//TODO verificar que o extent existe - feito
-		if(yfs->get(local_inum, t_buf) != yfs_client::OK)
+		if(yfs->get(local_inum, t_buf) != yfs_client::OK) {
+			yfs->release_lock(local_inum);
 			fuse_reply_err(req, ENOENT);
+		}
 
 		//TODO obter os atributos actuais do extent pretendido - feito
-		if((yfs->getfile(local_inum, finfo) != yfs_client::OK) || (getattr(local_inum, st) != yfs_client::OK))
+		if((yfs->getfile(local_inum, finfo) != yfs_client::OK) || (getattr(local_inum, st) != yfs_client::OK)) {
+			yfs->release_lock(local_inum);
 			fuse_reply_err(req, ENOENT);
+		}
 
 		//o novo tamanho é igual a zero: esvaziamos o buffer (em vez de truncar o seu conteudo a zeros)
-		if(attr->st_size == 0) {
+		if(attr->st_size == 0)
 			t_buf.clear();
-			//TODO - o que é que é suposto devolver???
-		}
 
 		//o novo tamanho é menor que o tamanho actual do extent
 		//truncamos a informação do ficheiro até ao tamanho pretendido
-		else if(attr->st_size < finfo.size) {
+		else if(attr->st_size < finfo.size)
 			t_buf.substr(0, attr->st_size);
-		}
 
 		//o novo tamanho é maior que o actual: acrescentam-se zeros à informaçao actual
 		else {
@@ -128,24 +137,28 @@ fuseserver_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set
 			file_data = std::string(temp_buf);
 		}
 
+
+
 		//agr temos que actualizar a informação do ficheiro
 		if(yfs->put(local_inum, file_data) == yfs_client::OK) {
 			finfo.size = attr->st_size;
 			st.st_size = attr->st_size;
+			yfs->release_lock(local_inum);
 			fuse_reply_attr(req, &st, 0);
 		}
 
 		else {
+			yfs->release_lock(local_inum);
 			fuse_reply_err(req, EIO);
 		}
 	}
-	else {
+	else //ou to_set está a 0 ou a constante que indica a info a alterar é outra que nao a do size
 		fuse_reply_err(req, EIO);
-	}
 }
 
 
 //3A FASE - feito, falta testar
+//FASE 4 - adicionámos locks
 //off - a posiçao onde queremos começar a ler
 //size - o numero de bytes que queremos ler
 void
@@ -157,39 +170,48 @@ fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
 	yfs_client::inum local_inum = ino;
 	std::string buffer;
 
+	yfs->acquire_lock(local_inum);
+
 	//da erro pois nao é possivel ler ficheiros inexistentes
-	if(yfs->get(local_inum, buffer) != yfs_client::OK)
+	if(yfs->get(local_inum, buffer) != yfs_client::OK) {
+		yfs->release_lock(local_inum);
 		fuse_reply_err(req, ENOENT);
+	}
 
 	//o ficheiro existe, temos que tratar agr da quantidade de informaçao que queremos
 	else {
 		//o offset ou o tamanho sao menores que zero: erro de I/O
-		if((off < 0) || (size < 0))
+		if((off < 0) || (size < 0)) {
+			yfs->release_lock(local_inum);
 			fuse_reply_err(req, EIO);
+		}
 
 		//segundo a o header do fuse, caso o offset seja maior que o tamanho do buffer
 		//actual do ficheiro, deve devolver zeros
-		else if(off >= buffer.size())
+		else if(off >= buffer.size()) {
+			yfs->release_lock(local_inum);
 			fuse_reply_buf(req, NULL, size);
+		}
 
 		//a quantidade de informaçao que queremos ler esta dentro dos limites do ficheiro
 		else if(off+size <= buffer.size()) {
 			std::string to_reply = buffer.substr(off, size);
+			yfs->release_lock(local_inum);
 			fuse_reply_buf(req, to_reply.c_str(), size);
-			//fuse_reply_buf(req, to_reply.c_str(), (int)to_reply.size); //TODO ou apenas size??
 		}
 
 		//offset dentro dos limites de ficheiro, mas a soma do offset com o size sai
 		//dos limites, ler apenas a parte dentro do ficheiro
 		else {
 			std::string to_reply = buffer.substr(off, buffer.size()-off);
+			yfs->release_lock(local_inum);
 			fuse_reply_buf(req, to_reply.c_str(), buffer.size()-off);
-			//fuse_reply_buf(req, to_reply.c_str(), (int)to_reply.size); //TODO ou apenas size??
 		}
 	}
 }
 
 //3A FASE - feito, falta testar
+//FASE 4 - adicionámos locks
 //off - a posiçao onde queremos começar a escrever
 //size - o numero de bytes que queremos ler
 void
@@ -202,14 +224,20 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
 	yfs_client::inum local_inum = ino;
 	std::string info;
 
+	yfs->acquire_lock(local_inum);
+
 	//da erro pois nao é possivel ler ficheiros inexistentes
-	if(yfs->get(local_inum, info) != yfs_client::OK)
+	if(yfs->get(local_inum, info) != yfs_client::OK) {
+		yfs->release_lock(local_inum);
 		fuse_reply_err(req, ENOENT);
+	}
 
 	else {
 		//todas as condiçoes que despoletam erro de I/O. se alguma delas se verificar, retorna erro
-		if((size < 0) || (off < 0) || (off > info.size()))
+		if((size < 0) || (off < 0) || (off > info.size())) {
+			yfs->release_lock(local_inum);
 			fuse_reply_err(req, EIO);
+		}
 
 		else {
 			std::stringstream ss;
@@ -220,7 +248,7 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
 				ss << info.substr(0, off);
 
 			//introduzir o conteudo novo na stream (mas apenas os bytes pretendidos, ou seja, de 0 a size)
-			std::string temp_buf = buf;
+			std::string temp_buf(buf, size);
 			ss << temp_buf.substr(0,size);
 
 			//calculamos o numero de bytes que se encontram no fim do ficheiro
@@ -228,20 +256,23 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
 
 			//se a soma do offset com o size for menor que o tamanho do ficheiro, temos que voltar a escrever
 			//os bytes remanescentes
-			if(remaining_length < info.size()) {
+			if(remaining_length < info.size())
 				ss << info.substr(remaining_length, info.size()-remaining_length); //TODO ou usamos std::string::npos (para ir ate ao fim da string)??????
-			}
 
 			//escreve o novo conteudo no ficheiro
-			if(yfs->put(local_inum, ss.str()) != yfs_client::OK)
+			if(yfs->put(local_inum, ss.str()) != yfs_client::OK) {
+				yfs->release_lock(local_inum);
 				fuse_reply_err(req, EIO);
+			}
 
+			yfs->release_lock(local_inum);
 			fuse_reply_write(req, size);
 		}
 	}
 }
 
 //3A FASE - feito, falta testar
+//FASE 4 - adicionámos locks
 void
 fuseserver_open(fuse_req_t req, fuse_ino_t ino,
 		struct fuse_file_info *fi)
@@ -249,53 +280,73 @@ fuseserver_open(fuse_req_t req, fuse_ino_t ino,
 	// You fill this in
 
 	std::string buf;
+	yfs->acquire_lock(ino);
+
 	//fazemos o get do extent pretendido. se existir, devolve OK e abrimos o extent
-	if(yfs->get(ino,buf) == yfs_client::OK)
+	if(yfs->get(ino,buf) == yfs_client::OK) {
+		yfs->release_lock(ino);
 		fuse_reply_open(req, fi);
-	else
+	}
+	else {
+		yfs->release_lock(ino);
 		fuse_reply_err(req, EIO);
+	}
 }
 
 //FUNCIONA!! (feito na FASE 2)
-//não trata o caso de gerar inums que ja possam existir.
+//FASE 4 - adicionámos locks
+//TODO - não trata o caso de gerar inums que ja possam existir.
 //implementar a geraçao de novo inum sempre que isso se verifique
 yfs_client::status
 fuseserver_createhelper(fuse_ino_t parent, const char *name,
-		mode_t mode, struct fuse_entry_param *e, bool isFile)
+		mode_t mode, struct fuse_entry_param *e, bool is_file)
 {
 	fuse_ino_t new_inum;
-	//yfs->acquire(parent);
-	//yfs_client::inum inumber = yfs->ilookup(parent,name);
 
-	if(isFile)
+	if(is_file)
 		new_inum = rand() | 0x80000000;
 	else
 		new_inum = rand();
 
-	//TODO usar este metodo para criar directorias/ficheiros
-	//acrescentar um parametro para ver se queremos criar uma directoria ou ficheiro,
-	//para assim gerar o inum correctamente - bool isfile
 	std::string buff;
 	std::stringstream ss;
 	std::string parent_content;
 
+	yfs->acquire_lock(new_inum);
+
 	//cria um novo ficheiro, com o conteudo vazio.
 	//no nosso caso, nao retorna nenhum erro, pois, no caso de o ficheiro ja existir,
 	//substitui o conteudo do ficheiro
-	if(yfs->put(new_inum, buff) == yfs_client::IOERR)
+	if(yfs->put(new_inum, buff) == yfs_client::IOERR) {
+		yfs->release_lock(new_inum);
 		return yfs_client::IOERR;
+	}
+
+	yfs->acquire_lock(parent);
 
 	//vai buscar os conteudos do pai, para colocar no novo ficheiro
-	if(yfs->get(parent, parent_content) == yfs_client::IOERR)
+	if(yfs->get(parent, parent_content) == yfs_client::IOERR) {
+		yfs->release_lock(parent);
+		yfs->release_lock(new_inum);
 		return yfs_client::IOERR;
+	}
+
+	//printf("------ nome: %s, é ficheiro?: %d------\n", name, is_file);
+	//printf("------ conteudo do pai:---------\n%s\n", parent_content.c_str());
 
 	ss << parent_content;
 	ss << new_inum << " " << name << "\n";
 
 	//actualiza a informacao do pai do novo ficheiro, que agr tem a info
 	//do ficheiro que acabamos de criar
-	if(yfs->put(parent, ss.str()) == yfs_client::IOERR)
+	if(yfs->put(parent, ss.str()) == yfs_client::IOERR) {
+		yfs->release_lock(parent);
+		yfs->release_lock(new_inum);
 		return yfs_client::IOERR;
+	}
+
+	//podemos libertar ja o lock do pai, ja nao precisamos dele
+	yfs->release_lock(parent);
 
 	struct stat new_st;
 	getattr(new_inum,new_st);
@@ -305,7 +356,8 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
 	e->attr_timeout = 0.0;
 	e->entry_timeout = 0.0;
 
-	// You fill this in - ACHO QUE JA TA BOM, FALTA TESTAR - TESTADO
+	yfs->release_lock(new_inum);
+	// You fill this in
 
 	return yfs_client::OK;
 }
@@ -354,6 +406,7 @@ fuse_server_split(const std::string &s, char delim) {
 }
 
 //FUNCIONA (feito na FASE 2)
+//FASE 4 - adicionámos locks
 void
 fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
@@ -368,24 +421,33 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 	// `parent' in YFS. If the file was found, initialize e.ino and
 	// e.attr appropriately.
 
-	yfs_client::inum parent_inum = yfs->ilookup(parent, name);
+	yfs->acquire_lock(parent);
+	yfs_client::inum child_inum = yfs->ilookup(parent, name);
+
+	yfs->acquire_lock(child_inum);
 
 	//apenas tratamos o caso em que o found passa a true,
 	//pois ele é inicializado a false
-	if(parent_inum != 0)
+	if(child_inum != 0)
 		found = true;
 
 	if (found) {
 		struct stat new_st;
-		getattr(parent_inum, new_st);
 
-		e.ino = parent_inum;
+		getattr(child_inum, new_st);
+
+		e.ino = child_inum;
 		e.attr = new_st;
 
+		yfs->release_lock(child_inum);
+		yfs->release_lock(parent);
 		fuse_reply_entry(req, &e);
 	}
-	else
+	else {
+		yfs->release_lock(child_inum);
+		yfs->release_lock(parent);
 		fuse_reply_err(req, ENOENT);
+	}
 }
 
 
@@ -417,6 +479,7 @@ int reply_buf_limited(fuse_req_t req, const char *buf, size_t bufsize,
 }
 
 //FUNCIONA!!
+//FASE 4 - adicionámos locks
 void
 fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 		off_t off, struct fuse_file_info *fi)
@@ -434,12 +497,16 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 
 	memset(&b, 0, sizeof(b));
 
+	yfs->acquire_lock(inum);
+
 	//fill in the b data structure using dirbuf_add
 	std::string parent_buffer;
 	if(yfs->get(inum, parent_buffer) == yfs_client::IOERR) {
+		yfs->release_lock(inum);
 		fuse_reply_err(req, ENOENT);
 	}
 	else {
+		yfs->release_lock(inum);
 		std::vector<std::string> dir_entries = fuse_server_split(parent_buffer, '\n');
 
 		unsigned int i; //para nao dar warning aquando da comparação com o size do vector (que é unsigned)
@@ -475,7 +542,8 @@ fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
 		fuse_reply_err(req, ENOENT);
 }
 
-//FASE 4 - feito, testado
+
+//FASE 4 - feito e testado. adicionámos locks
 void
 fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
@@ -484,20 +552,33 @@ fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 	std::stringstream ss;
 	int i;
 
+	yfs->acquire_lock(parent);
+
 	//verificamos se a directoria pai existe
-	if(yfs->get(parent, parent_buffer) != yfs_client::OK)
+	if(yfs->get(parent, parent_buffer) != yfs_client::OK) {
+		yfs->release_lock(parent);
 		fuse_reply_err(req, EIO);
+	}
+
+	yfs->release_lock(parent);
 
 	//obtemos o inum do ficheiro que queremos remover
 	yfs_client::inum file_inum = yfs->ilookup(parent, name);
 
 	//caso o inum seja 0 significa que o ficheiro nao existe
-	if(file_inum == 0)
+	if(file_inum == 0) {
+		//yfs->release_lock(parent);
 		fuse_reply_err(req, ENOENT);
+	}
 
+	yfs->acquire_lock(file_inum);
 	int remove_status = yfs->remove(file_inum);
-	if(remove_status != yfs_client::OK)
+	yfs->release_lock(file_inum);
+
+	if(remove_status != yfs_client::OK) {
+		//yfs->release_lock(parent);
 		fuse_reply_err(req, EIO);
+	}
 
 	//ja temos o conteudo da directoria (obtido na primeira verificaçao)
 	//iteramos sobre todos os nomes da directoria
@@ -517,13 +598,18 @@ fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 				ss << entries[i] << '\n';
 			}
 		}
+		yfs->acquire_lock(parent);
 
 		//actualizamos a nova informação na directoria pai
 		std::string new_parent_buffer = ss.str();
-		if(yfs->put(parent, new_parent_buffer) != yfs_client::OK)
+		if(yfs->put(parent, new_parent_buffer) != yfs_client::OK) {
+			yfs->release_lock(parent);
 			fuse_reply_err(req, EIO);
-		else
+		}
+		else {
+			yfs->release_lock(parent);
 			fuse_reply_err(req, 0);
+		}
 	}
 }
 
