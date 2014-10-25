@@ -193,6 +193,24 @@ void
 proposer::accept(unsigned instance, std::vector<std::string> &accepts,
 		std::vector<std::string> nodes, std::string v)
 {
+	int i;
+	for(i = 0; i < nodes.size(); i++)
+	{
+		paxos_protocol::acceptarg acc_arg;
+		handle conn(nodes[i]);
+		int result;
+
+		acc_arg.v = v;
+		acc_arg.instance = instance;
+		acc_arg.n = my_n;
+
+		if(conn.get_rpcc()->call(paxos_protocol::acceptreq, me,
+				acc_arg, result, rpcc::to(1000)) == paxos_protocol::OK) {
+			if(result) {
+				accepts.push_back(nodes[i]);
+			}
+		}
+	}
 
 }
 
