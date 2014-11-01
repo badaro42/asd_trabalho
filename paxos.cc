@@ -152,7 +152,7 @@ proposer::prepare(unsigned instance, std::vector<std::string> &accepts,
 {
 	int i;
 	my_n.m = me;
-	prop_t maximum_n_a = {0, std::string()};
+	prop_t maximum_number_accepted = {0, std::string()};
 
 	for(i = 0; i < nodes.size(); i++)
 	{
@@ -171,17 +171,18 @@ proposer::prepare(unsigned instance, std::vector<std::string> &accepts,
 			}
 			else {
 				if(p_result.accept) { //o acceptor aceitou a proposta
-					accepts.push_back(nodes[i]);
+					accepts.push_back(nodes[i]); //adiciona o nó ao quorum
 
 					//comparar se o seqno que recebemos é maior que o seqno já visto ate agr
 					//tambem temos em conta se o valor recebido nao vem vazio
-					if((p_result.n_a > maximum_n_a.n) && (p_result.v_a.size() != 0)) {
-						maximum_n_a.n = p_result.n_a;
-						v = p_result.n_a;
+					if((p_result.n_a.n > maximum_number_accepted.n) && (p_result.v_a.size() != 0)) {
+						maximum_number_accepted.n = p_result.n_a.n;
+						v = p_result.n_a.m;
 					}
 				}
-				else
-					return false;
+				//				TODO: em principio nao é necessario
+				//				else
+				//					return false;
 			}
 		}
 	}
@@ -227,8 +228,7 @@ proposer::decide(unsigned instance, std::vector<std::string> accepts,
 		dec_arg.instance = instance;
 		dec_arg.v = v;
 
-		conn.get_rpcc()->call(paxos_protocol::decidereq, me, dec_arg, v, rpcc::to(1000));
-
+		conn.get_rpcc()->call(paxos_protocol::decidereq, me, dec_arg, result, rpcc::to(1000));
 	}
 }
 
@@ -269,7 +269,7 @@ acceptor::preparereq(std::string src, paxos_protocol::preparearg a,
 		r.v_a = values[instance_h];
 	}
 	else { //nova instancia, siga
-		if(!(a.n > n_h)) { //o seqno do proposal é maior que o maior que ja tinhamos
+		if(!(a.n > n_h)) { //n_h >= a.n   o seqno do proposal é maior que o maior que ja tinhamos
 			r.oldinstance = 0;
 			r.accept = 0;
 		}
@@ -278,8 +278,8 @@ acceptor::preparereq(std::string src, paxos_protocol::preparearg a,
 			r.accept = 1;
 			r.n_a = n_a;
 			r.v_a = v_a;
-			//			n_h = a.n;        //TODO descomentar estas duas caso nao dê
-			//			l->loghigh(n_h);
+			n_h = a.n;        //TODO descomentar estas duas caso nao dê
+			l->loghigh(n_h);
 		}
 	}
 
@@ -296,11 +296,12 @@ acceptor::acceptreq(std::string src, paxos_protocol::acceptarg a, int &r)
 	r = 0;
 	if(a.n >= n_h)
 	{
+		r = 1;
+
 		n_a= a.n;
 		v_a=a.v;
 
-		l->logprop(n_a,v_a);
-		r = 1;
+		l->logprop(n_a,v_a); //imprime cenas para os logs
 	}
 
 	return paxos_protocol::OK;
@@ -310,7 +311,7 @@ paxos_protocol::status
 acceptor::decidereq(std::string src, paxos_protocol::decidearg a, int &r)
 {
 	// handle an decide message from proposer
-	if(instance_h > a.instance)
+	if(instance_h > a.instance) //TODO: é mesmo necessario verificar a instance??
 		commit(a.instance, a.v);
 
 	return paxos_protocol::OK;
