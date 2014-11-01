@@ -218,7 +218,18 @@ void
 proposer::decide(unsigned instance, std::vector<std::string> accepts, 
 		std::string v)
 {
+	int i;
+	for(i = 0; i < accepts.size(); i++) {
+		int result;
+		paxos_protocol::decidearg dec_arg;
+		handle conn(accepts[i]);
 
+		dec_arg.instance = instance;
+		dec_arg.v = v;
+
+		conn.get_rpcc()->call(paxos_protocol::decidereq, me, dec_arg, v, rpcc::to(1000));
+
+	}
 }
 
 acceptor::acceptor(class paxos_change *_cfg, bool _first, std::string _me, 
@@ -276,6 +287,7 @@ acceptor::preparereq(std::string src, paxos_protocol::preparearg a,
 
 }
 
+//r - 0 se o seqno do proposer for menor que o maior seqno já visto. 1 caso contrario
 paxos_protocol::status
 acceptor::acceptreq(std::string src, paxos_protocol::acceptarg a, int &r)
 {
