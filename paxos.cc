@@ -89,6 +89,7 @@ bool
 proposer::run(int instance, std::vector<std::string> newnodes, std::string newv)
 {
 	std::vector<std::string> accepts;
+	std::vector<std::string> auxnodes;
 	std::vector<std::string> nodes;
 	std::string v;
 	bool r = false;
@@ -114,9 +115,10 @@ proposer::run(int instance, std::vector<std::string> newnodes, std::string newv)
 
 	stable = false;
 	c_nodes = newnodes;
+	auxnodes = c_nodes;
 	c_v = newv;
 
-	if (prepare(instance, accepts, c_nodes, v)) {
+	if (prepare(instance, accepts, auxnodes, v)) {
 
 		if (majority(c_nodes, accepts)) {
 			printf("paxos::manager: received a majority of prepare responses\n");

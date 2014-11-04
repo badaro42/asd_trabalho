@@ -315,16 +315,12 @@ rsm::joinreq(std::string m, viewstamp last, rsm_protocol::joinres &r)
 	} else {
 		// Lab 7: invoke config to create a new view that contains m
 
-		//printf("rsm::joinreq: adding node %s to the list", m.c_str());
 		pthread_mutex_unlock(&rsm_mutex);
 		bool addret = cfg->add(m);
 		pthread_mutex_lock(&rsm_mutex);
 		if (addret) {
-			//printf("rsm::joinreq: added %s\n", m.c_str());
 			r.log = cfg->dump();
-			//printf("rsm::joinreq: r.log=%s\n", r.log.c_str());
 		} else {
-			//printf("rsm::joinreq: failed to add %s\n", m.c_str());
 			ret = rsm_client_protocol::ERR;
 		}
 	}
