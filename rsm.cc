@@ -231,9 +231,13 @@ rsm::commit_change()
 {
 	pthread_mutex_lock(&rsm_mutex);
 	// Lab 7:
-	// - If I am not part of the new view, start recovery
+	// - If I am not part of the new view, start recovery (call cond_signal)
 
+	//verifica se o primario nao esta na vista actual
+	//define o primario como o nó com o menor id se for o caso
 	set_primary();
+
+	//sinal para a thread recovery para ver se precisamos de nos juntar à vista actual
 	pthread_cond_signal(&recovery_cond);
 
 	pthread_mutex_unlock(&rsm_mutex);
@@ -296,8 +300,7 @@ rsm::transferdonereq(std::string m, int &r)
 	return ret;
 }
 
-
-//TODO: fazer de novo
+//FEITO NO LAB 7
 rsm_protocol::status
 rsm::joinreq(std::string m, viewstamp last, rsm_protocol::joinres &r)
 {
@@ -306,6 +309,8 @@ rsm::joinreq(std::string m, viewstamp last, rsm_protocol::joinres &r)
 	assert (pthread_mutex_lock(&rsm_mutex) == 0);
 	printf("joinreq: src %s last (%d,%d) mylast (%d,%d)\n", m.c_str(),
 			last.vid, last.seqno, last_myvs.vid, last_myvs.seqno);
+
+	//m já pertence à vista
 	if (cfg->ismember(m)) {
 		printf("joinreq: is still a member\n");
 		r.log = cfg->dump();
@@ -313,14 +318,20 @@ rsm::joinreq(std::string m, viewstamp last, rsm_protocol::joinres &r)
 		printf("joinreq: busy\n");
 		ret = rsm_client_protocol::BUSY;
 	} else {
-		// Lab 7: invoke config to create a new view that contains m
+		// Lab 7
 
+		//fazemos unlock do rsm_mutex para fazer lock doutro mutex no método add,
+		//isto porque vamos fazer uma downcall, e assim garantimos correcção,
+		//pois em cada momento temos apenas um lock.
 		pthread_mutex_unlock(&rsm_mutex);
-		bool addret = cfg->add(m);
-		pthread_mutex_lock(&rsm_mutex);
-		if (addret) {
+
+		//invoke config to create a new view that contains m
+		if(cfg->add(m)) {
+			pthread_mutex_lock(&rsm_mutex);
 			r.log = cfg->dump();
-		} else {
+		}
+		else { //se nao conseguir adicionar m à vista, devolve erro
+			pthread_mutex_lock(&rsm_mutex);
 			ret = rsm_client_protocol::ERR;
 		}
 	}
