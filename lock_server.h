@@ -10,8 +10,12 @@
 #include "rpc.h"
 #include <pthread.h>
 #include <map>
+#include "rsm.h"
 
 class lock_server {
+
+private:
+	class rsm *rsm;
 
 protected:
 	int nacquire;
@@ -26,7 +30,7 @@ protected:
 
 
 public:
-	lock_server();
+	lock_server(class rsm *rsm=0);
 	~lock_server();
 
 	lock_protocol::status stat(int clt, lock_protocol::lockid_t lid, int &);

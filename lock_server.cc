@@ -11,7 +11,7 @@
 pthread_mutex_t global_lock;
 pthread_cond_t map_condition;
 
-lock_server::lock_server(): nacquire (0)
+lock_server::lock_server(class rsm *_rsm): rsm(_rsm), nacquire (0)
 {
 	pthread_mutex_init(&global_lock, NULL);
 	pthread_cond_init(&map_condition, NULL);
