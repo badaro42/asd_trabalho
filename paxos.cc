@@ -160,7 +160,7 @@ proposer::prepare(unsigned instance, std::vector<std::string> &accepts,
 		std::vector<std::string> nodes,
 		std::string &v)
 {
-	int i;
+	unsigned int i;
 	my_n.m = me; //o proprio identificador
 	prop_t maximum_number_accepted = {0, std::string()};
 
@@ -208,7 +208,7 @@ void
 proposer::accept(unsigned instance, std::vector<std::string> &accepts,
 		std::vector<std::string> nodes, std::string v)
 {
-	int i;
+	unsigned int i;
 	for(i = 0; i < nodes.size(); i++)
 	{
 		handle conn(nodes[i]);
@@ -235,7 +235,7 @@ void
 proposer::decide(unsigned instance, std::vector<std::string> accepts, 
 		std::string v)
 {
-	int i;
+	unsigned int i;
 	for(i = 0; i < accepts.size(); i++) {
 		int result;
 		paxos_protocol::decidearg dec_arg;

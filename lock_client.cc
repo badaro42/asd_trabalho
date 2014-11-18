@@ -17,7 +17,7 @@ lock_client::lock_client(std::string dst)
 
 	cl = new rsm_client(dst);
 
-	srand(45132);
+	srand(666);
 	id = rand();
 
 //	if (rcl->bind() < 0) {
@@ -38,13 +38,8 @@ lock_protocol::status
 lock_client::acquire(lock_protocol::lockid_t lid)
 {
 	int r;
-	lock_protocol::status stat;
-
-//	stat = cl->call(lock_protocol::acquire, id, lid, r);
-	while(cl->call(lock_protocol::acquire, id, lid, r) == lock_protocol::RETRY) {
+	while(cl->call(lock_protocol::acquire, id, lid, r) == lock_protocol::RETRY)
 		usleep(50000);
-//		stat = cl->call(lock_protocol::acquire, id, lid, r);
-	}
 
 	//assert (ret == lock_protocol::OK);
 	return r;

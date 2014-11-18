@@ -314,11 +314,12 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 		ret = rsm_client_protocol::NOTPRIMARY;
 	}
 	else {
+		//actualiza a viewstamp e cria uma para enviar para os slaves
 		last_myvs = myvs;
 		myvs.seqno++;
 		viewstamp temp_vs = myvs;
 
-		int i;
+		unsigned int i;
 		std::vector<std::string> slaves = cfg->get_curview();
 
 		bool slave_failed = false;
@@ -342,20 +343,17 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 				//se o primeiro call retornar BUSY voltamos a tentar contactar
 				//até o codigo retornado ser diferente de BUSY (ou OK ou ERR)
 				while(return_code == rsm_protocol::BUSY) {
-					usleep(5000);
+					usleep(5000); //5ms
 					return_code = conn.get_rpcc()->call(rsm_protocol::invoke, procno,
 							temp_vs, req, dummy, rpcc::to(1000));
 				}
 				if(return_code == rsm_protocol::ERR)
 					slave_failed = true;
 			}
-			else { //um dos slaves falhou, não conseguimos contacta-lo
+			else  //um dos slaves falhou, não conseguimos contacta-lo
 				slave_failed = true;
-//				continue;
-			}
 		}
 		if(slave_failed){
-//			cfg->
 			ret = rsm_client_protocol::ERR;
 		}
 		else{
@@ -385,14 +383,15 @@ rsm::invoke(int proc, viewstamp vs, std::string req, int &dummy)
 
 	if(inviewchange)
 		ret = rsm_protocol::BUSY;
-	else if(amiprimary_wo() || !cfg->ismember(cfg->myaddr())) { //TODO: verificar se a replica faz parte da vista
-		ret = rsm_protocol::ERR;
-	}
-	else {
+	//só os slaves correm isto: ou seja, se nao forem primarios
+	//precisam ainda de fazer parte da vista actual
+	else if(!amiprimary_wo() && cfg->ismember(cfg->myaddr())) {
 		last_myvs = myvs;
 		myvs = vs;
 		execute(proc, req);
 	}
+	else
+		ret = rsm_protocol::ERR;
 
 	pthread_mutex_unlock(&rsm_mutex);
 
