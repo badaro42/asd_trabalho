@@ -5,6 +5,7 @@
 #include "rsm_protocol.h"
 #include <string>
 #include <vector>
+#include <unistd.h>
 
 
 //

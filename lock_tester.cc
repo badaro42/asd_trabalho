@@ -58,9 +58,21 @@ test1(void)
 {
     printf ("acquire a release a acquire a release a\n");
     lc[0]->acquire(a);
+
+    printf("111111");
+
     check_grant(a);
+
+    printf("222222");
+
     lc[0]->release(a);
+
+    printf("333333");
+
     check_release(a);
+
+    printf("444444");
+
     lc[0]->acquire(a);
     check_grant(a);
     lc[0]->release(a);

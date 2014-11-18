@@ -4,6 +4,7 @@
 #define lock_client_h
 
 #include <string>
+#include "rsm_client.h"
 #include "lock_protocol.h"
 #include "rpc.h"
 #include <vector>
@@ -11,7 +12,8 @@
 // Client interface to the lock server
 class lock_client {
  protected:
-  rpcc *cl;
+  rsm_client *cl;
+  int id;
  public:
   lock_client(std::string d);
   virtual ~lock_client() {};

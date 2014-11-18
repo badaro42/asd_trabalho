@@ -43,8 +43,10 @@ lock_protocol::status lock_server::acquire(int clt, lock_protocol::lockid_t lid,
 	//o elemento ja existe. se estiver ocupado, fica na fila de espera
 	if(l_state_map.count(lid) > 0) {	
 		
-		while(!(l_state_map[lid] == stat))
-			pthread_cond_wait(&map_condition, &global_lock);
+//		while(!(l_state_map[lid] == stat))
+//			pthread_cond_wait(&map_condition, &global_lock);
+		if(l_state_map[lid] != stat)
+			return lock_protocol::RETRY;
 	}
 
 	//o elemento nao existe
@@ -65,7 +67,7 @@ lock_protocol::status lock_server::release(int clt, lock_protocol::lockid_t lid,
 	if((l_state_map.count(lid) > 0) && (l_state_map[lid] == LOCKED)) {
 
 		l_state_map[lid] = FREE;
-		pthread_cond_broadcast(&map_condition);
+//		pthread_cond_broadcast(&map_condition);
 
 	}
 	//o id do lock nao existe, retornamos erro que diz que a entidade nao existe
