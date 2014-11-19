@@ -151,6 +151,7 @@ rsm::recovery()
 	assert(pthread_mutex_lock(&rsm_mutex)==0);
 
 	while (1) {
+		inviewchange = true; //vai sincronizar estado com o master
 		while (!cfg->ismember(cfg->myaddr())) {
 			if (join(primary)) {
 				printf("recovery: joined\n");
@@ -160,6 +161,7 @@ rsm::recovery()
 				assert(pthread_mutex_lock(&rsm_mutex)==0);
 			}
 		}
+		inviewchange = false; //acabou de sincronizar com o master, prossegue o trabalho
 
 		if (r) inviewchange = false;
 		printf("recovery: go to sleep %d %d\n", insync, inviewchange);
@@ -218,10 +220,28 @@ rsm::statetransfer(std::string m)
 	return true;
 }
 
+//TODO: FAZER DE NOVO!!!
 bool
 rsm::statetransferdone(std::string m) {
 	// For lab 6
+
 	return true;
+
+	//	rsm_protocol::status ret = rsm_protocol::OK;
+	//	int r;
+	//	handle h(m);
+	//	if(h.get_rpcc()){
+	//		pthread_mutex_unlock(&rsm_mutex);
+	//		ret = h.get_rpcc()->call(rsm_protocol::transferdonereq, cfg->myaddr(), r, rpcc::to(1000));
+	//		pthread_mutex_lock(&rsm_mutex);
+	//	}
+	//	if (h.get_rpcc() == 0 || ret != rsm_protocol::OK)
+	//		return false;
+	//
+	//	//myvs.vid = r;
+	//	//myvs.seqno = 0;
+	//	return true;
+
 }
 
 
@@ -314,11 +334,6 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 		ret = rsm_client_protocol::NOTPRIMARY;
 	}
 	else {
-		//actualiza a viewstamp e cria uma para enviar para os slaves
-		last_myvs = myvs;
-		myvs.seqno++;
-		viewstamp temp_vs = myvs;
-
 		unsigned int i;
 		std::vector<std::string> slaves = cfg->get_curview();
 
@@ -326,6 +341,11 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 		pthread_mutex_unlock(&rsm_mutex);
 
 		pthread_mutex_lock(&invoke_mutex);
+		//actualiza a viewstamp e cria uma para enviar para os slaves
+		last_myvs = myvs;
+		myvs.seqno++;
+		viewstamp temp_vs = myvs;
+
 		for(i = 0; i < slaves.size(); i++) {
 
 			//nao envia para ele proprio
@@ -343,15 +363,19 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 				//se o primeiro call retornar BUSY voltamos a tentar contactar
 				//até o codigo retornado ser diferente de BUSY (ou OK ou ERR)
 				while(return_code == rsm_protocol::BUSY) {
-					usleep(5000); //5ms
+					usleep(1000); //5ms
 					return_code = conn.get_rpcc()->call(rsm_protocol::invoke, procno,
 							temp_vs, req, dummy, rpcc::to(1000));
 				}
-				if(return_code == rsm_protocol::ERR)
+				if(return_code == rsm_protocol::ERR) {
 					slave_failed = true;
+					break;
+				}
 			}
-			else  //um dos slaves falhou, não conseguimos contacta-lo
+			else { //um dos slaves falhou, não conseguimos contacta-lo
 				slave_failed = true;
+				continue;
+			}
 		}
 		if(slave_failed){
 			ret = rsm_client_protocol::ERR;
@@ -381,14 +405,27 @@ rsm::invoke(int proc, viewstamp vs, std::string req, int &dummy)
 
 	pthread_mutex_lock(&rsm_mutex);
 
+	printf("SEQNO recebido: %d; SEQNO da replica: %d\n", vs.seqno, myvs.seqno);
+
 	if(inviewchange)
 		ret = rsm_protocol::BUSY;
 	//só os slaves correm isto: ou seja, se nao forem primarios
 	//precisam ainda de fazer parte da vista actual
-	else if(!amiprimary_wo() && cfg->ismember(cfg->myaddr())) {
-		last_myvs = myvs;
-		myvs = vs;
-		execute(proc, req);
+	else if(!amiprimary_wo() && cfg->ismember(cfg->myaddr()))
+	{
+		if((vs.seqno == myvs.seqno+1) && (vs.vid == myvs.vid)) //TODO: NÃO PASSA O TESTE 8
+		{
+			printf("SEQNO %d dentro da ordem, prossegue :D :D!!!!\n", vs.seqno);
+
+			last_myvs = myvs;
+			myvs = vs;
+			execute(proc, req);
+		}
+		else {
+			printf("SEQNO %d fora de ordem!!!!\n", vs.seqno);
+
+			ret = rsm_protocol::ERR;
+		}
 	}
 	else
 		ret = rsm_protocol::ERR;
@@ -420,6 +457,7 @@ rsm::transferreq(std::string src, viewstamp last, rsm_protocol::transferres &r)
 /**
  * RPC handler: Send back the local node's latest viewstamp
  */
+//TODO: FAZER DE NOVO!!!
 rsm_protocol::status
 rsm::transferdonereq(std::string m, int &r)
 {
@@ -428,6 +466,17 @@ rsm::transferdonereq(std::string m, int &r)
 	// For lab 6
 	assert (pthread_mutex_unlock(&rsm_mutex) == 0);
 	return ret;
+
+	//	int ret = rsm_client_protocol::OK;
+	//
+	//	pthread_mutex_lock(&rsm_mutex);
+	//
+	//	assert(primary == cfg->myaddr());
+	//
+	//	pthread_cond_signal(&sync_cond);
+	//	pthread_mutex_unlock(&rsm_mutex);
+	//
+	//	return ret;
 }
 
 //FEITO NO LAB 7

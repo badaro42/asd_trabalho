@@ -28,6 +28,14 @@ class rsm : public config_view_change {
   bool inviewchange;
   unsigned nbackup;
 
+  struct out_of_order_request {
+  	viewstamp vs;
+  	int proc;
+  	std::string req;
+  };
+
+  std::vector<out_of_order_request> old_requests;
+
   // For testing purposes
   rpcs *testsvr;
   bool partitioned;
