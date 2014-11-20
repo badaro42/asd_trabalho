@@ -638,7 +638,7 @@ if ($do_run[10]) {
     mydie( "Failed lock tester for test 10" );
   }
 
-  cleanup();
+  #cleanup();
   sleep 2;
 }
 

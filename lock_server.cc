@@ -93,7 +93,8 @@ lock_server::marshal_state() {
 
 	for (iter = l_state_map.begin(); iter != l_state_map.end(); iter++) {
 		lock_protocol::lockid_t lid = iter->first;
-		int stat = l_state_map[lid];
+		l_state stat;
+		stat = l_state_map[lid];
 		rep << lid;
 		rep << stat;
 	}
@@ -116,7 +117,7 @@ lock_server::unmarshal_state(std::string state) {
 	for (unsigned int i = 0; i < locks_size; i++) {
 		lock_protocol::lockid_t lid;
 		rep >> lid;
-		int stat;
+		l_state stat;
 		rep >> stat;
 		l_state_map[lid] = stat;
 	}
