@@ -142,12 +142,11 @@ rsm::reg1(int proc, handler *h)
 	assert(pthread_mutex_unlock(&rsm_mutex)==0);
 }
 
+//LAB6 - feito
 // The recovery thread runs this function
 void
 rsm::recovery()
 {
-//	bool r = false;
-
 	assert(pthread_mutex_lock(&rsm_mutex)==0);
 
 	while (1) {
@@ -178,13 +177,11 @@ rsm::sync_with_backups()
 	return true;
 }
 
-
+//LAB6 - feito
 bool
 rsm::sync_with_primary()
 {
 	// For lab 6
-	//	return true;
-
 	bool result = (statetransfer(primary) && statetransferdone(primary));
 	return result;
 }
@@ -224,7 +221,7 @@ rsm::statetransfer(std::string m)
 	return true;
 }
 
-
+//LAB6 - feito
 bool
 rsm::statetransferdone(std::string m) {
 	// For lab 6
@@ -318,12 +315,11 @@ rsm::execute(int procno, std::string req)
 	return rep1.str();
 }
 
-//
+//LAB6 - feito
 // Clients call client_invoke to invoke a procedure on the replicated state
 // machine: the primary receives the request, assigns it a sequence
 // number, and invokes it on all members of the replicated state
 // machine.
-//
 rsm_client_protocol::status
 rsm::client_invoke(int procno, std::string req, std::string &r)
 {
@@ -355,7 +351,7 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 
 		for(i = 0; i < slaves.size(); i++) {
 
-			//nao envia para ele proprio
+			//nao envia para ele proprio, salta para o proximo nó
 			if(slaves[i] == cfg->myaddr())
 				continue;
 
@@ -397,13 +393,12 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 	return ret;
 }
 
-//
+//LAB6 - feito
 // The primary calls the internal invoke at each member of the
 // replicated state machine
 //
 // the replica must execute requests in order (with no gaps)
 // according to requests' seqno
-
 rsm_protocol::status
 rsm::invoke(int proc, viewstamp vs, std::string req, int &dummy)
 {
@@ -416,6 +411,7 @@ rsm::invoke(int proc, viewstamp vs, std::string req, int &dummy)
 
 	if(inviewchange)
 		ret = rsm_protocol::BUSY;
+
 	//só os slaves correm isto: ou seja, se nao forem primarios
 	//precisam ainda de fazer parte da vista actual
 	else if(!amiprimary_wo() && cfg->ismember(cfg->myaddr()))
@@ -430,7 +426,6 @@ rsm::invoke(int proc, viewstamp vs, std::string req, int &dummy)
 		}
 		else {
 			printf("SEQNO %d fora de ordem!!!!\n", vs.seqno);
-
 			ret = rsm_protocol::ERR;
 		}
 	}
@@ -461,28 +456,19 @@ rsm::transferreq(std::string src, viewstamp last, rsm_protocol::transferres &r)
 	return ret;
 }
 
+//LAB6 - feito
 /**
  * RPC handler: Send back the local node's latest viewstamp
  */
 rsm_protocol::status
 rsm::transferdonereq(std::string m, int &r)
 {
-//	int ret = rsm_client_protocol::OK;
-//	assert (pthread_mutex_lock(&rsm_mutex) == 0);
-//	// For lab 6
-//
-////	r = myvs.vid;
-//	inviewchange = false;
-//
-//	assert (pthread_mutex_unlock(&rsm_mutex) == 0);
-//	return ret;
-
 	int ret = rsm_client_protocol::OK;
 	inviewchange = false;
 	return ret;
 }
 
-//FEITO NO LAB 7
+//FEITO NO LAB 5
 rsm_protocol::status
 rsm::joinreq(std::string m, viewstamp last, rsm_protocol::joinres &r)
 {
